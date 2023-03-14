@@ -14,7 +14,7 @@ echo token
 echo $AUTH_TOKEN
 # Import dashboard
 #curl -s -H "Authorization: Bearer $AUTH_TOKEN" -H 'Content-Type: application/json' --data-binary "@$DASHBOARD_JSON_FILE" "$GRAFANA_URL/api/dashboards/db"
-curl --location 'http://192.168.3.123:3000/api/datasources' \
+curl --location 'http://localhost:3000/api/datasources' \
 --header 'Content-Type: application/json; charset=utf-8' \
 --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
 --data '{
