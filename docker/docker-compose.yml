@@ -1,0 +1,25 @@
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - /home/vagrant/docker/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      restart: always
+      ports:
+        - "3000:3000"
+      environment:
+      environment:
+        GF_SECURITY_ADMIN_USER: "admin"
+        GF_SECURITY_ADMIN_PASSWORD: "admin"
+        GF_USERS_ALLOW_SIGN_UP: false
+        GF_AUTH_ANONYMOUS_ENABLED: "true"  # Разрешить анонимный доступ
+        GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"  # Установить роль просмотрщика для анонимного доступа
+        GF_INSTALL_PLUGINS: grafana-piechart-panel  # Установить плагин графика-круговой диаграммы
+        PROMETHEUS_ENDPOINT: http://172.18.0.1:9090  #

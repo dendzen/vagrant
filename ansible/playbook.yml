@@ -1,0 +1,116 @@
+---
+- name: Install Docker and Docker Compose
+  hosts: all
+  become: true
+  vars:
+    docker_compose_version: "{{ lookup('env', 'docker_compose_version') | default('latest') }}"
+    node_exporter_version: "{{ lookup('env', 'node_exporter_version') | default('latest') }}"
+    grafana_version: "{{ lookup('env', 'grafana_version') | default('latest') }}"
+  tasks:
+    - name: Install packages required for Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Add current user to Docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: 'u+x,g+x'
+      register: docker_compose_install
+
+    - name: Install Node Exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter-{{ node_exporter_version }}.tar.gz
+
+    - name: Extract Node Exporter archive
+      unarchive:
+        src: /tmp/node_exporter-{{ node_exporter_version }}.tar.gz
+        dest: /tmp/
+        remote_src: true
+
+    - name: Stop node_exporter service
+      systemd:
+        name: node_exporter
+        state: stopped
+      become: true
+
+    - name: Copy Node Exporter binary to /usr/local/bin/
+      become: true
+      command: cp -R /tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter /usr/local/bin/
+
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+      become: true
+
+    - name: Set ownership of node_exporter binary
+      file:
+        path: /usr/local/bin/node_exporter
+        owner: node_exporter
+        group: node_exporter
+
+    - name: Add Node Exporter to PATH
+      lineinfile:
+        path: /etc/environment
+        line: 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin/"'
+        insertafter: EOF
+        state: present
+
+    - name: Copy node_exporter.service and enable service
+      become: true
+      command: cp -R /home/vagrant/configs/node_exporter.service /etc/systemd/system/
+
+    - name: Chmod node_exporter.service
+      become: true
+      command: chmod 644 /etc/systemd/system/node_exporter.service
+
+    - name: Reload systemd manager configuration
+      systemd:
+        daemon_reload: yes
+      become: true
+
+    - name: Enable and start node_exporter service
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+      become: true
+
+    - name: Stop Docker  container
+      command: "docker-compose -f /home/vagrant/docker/docker-compose.yml stop"
+      become: yes
+                
+    - name: Start Docker  container
+      command: "docker-compose -f /home/vagrant/docker/docker-compose.yml up -d"
+      become: yes
+
