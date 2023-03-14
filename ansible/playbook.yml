@@ -56,11 +56,11 @@
         dest: /tmp/
         remote_src: true
 
-    - name: Stop node_exporter service
-      systemd:
-        name: node_exporter
-        state: stopped
-      become: true
+#    - name: Stop node_exporter service
+#      systemd:
+#        name: node_exporter
+#        state: stopped
+#      become: true
 
     - name: Copy Node Exporter binary to /usr/local/bin/
       become: true
